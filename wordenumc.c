@@ -106,6 +106,13 @@ uint64_t FACT_N[21] =
         2432902008176640000,
     };
 
+/**
+ * @brief Calculate factorial of n.
+ * Calculate factorial of n. If n <= 20 then use the lookup table, otherwise
+ * calculate it using recursion.
+ * @param n The number to calculate factorial for. Should be n <= 20.
+ * @return Factorial of n.
+ */
 inline uint64_t fact(const uint64_t n) {
   if (n < 21lu) {
     return FACT_N[n];
@@ -117,23 +124,52 @@ inline uint64_t fact(const uint64_t n) {
   }
 }
 
+/**
+ * @brief Calculate nCr.
+ * Calculate number of combinations of size r can be found in a set of total
+ * size n.
+ * @param n Total number of elements.
+ * @param r Number of elements per combination.
+ * @return Number of combinations.
+ */
 inline uint64_t ncr(const uint64_t n, const uint64_t r) {
   return fact(n) / fact(n - r) / fact(r);
 }
 
+/**
+ * @brief Shorthand for handling fatal errors.
+ * Shorthand for handling fatal errors. Output error message and then exit with
+ * an error exit value.
+ * @param msg Error message to be displayed.
+ */
 extern inline void panic(const char *msg) {
   perror(msg);
   exit(EXIT_FAILURE);
+}
+
+/**
+ * @brief Calculate the size of the required output file for this program.
+ * @param total_length Total length of ell the elements.
+ * @param n Number of elements.
+ * @return Size of output file (in bytes).
+ */
+inline uint64_t compute_output_size(uint64_t total_length, uint64_t n) {
+
 }
 
 const char *INPUT_FILENAME = "input.txt";
 const char *OUTPUT_FILENAME = "output.txt";
 const int FILE_MODE = 0x0777;
 
-const char OUTPUT_LINE_START[1] = {'{'};
-const char OUTPUT_LINE_END[1] = {'}'};
-const char OUTPUT_LINE_BREAK[1] = {'\n'};
-const char OUTPUT_SEPARATOR[2] = {',', ' '};
+const uint64_t OUTPUT_LINE_START_LENGTH = 1;
+const uint64_t OUTPUT_LINE_END_LENGTH = 1;
+const uint64_t OUTPUT_LINE_BREAK_LENGTH = 1;
+const uint64_t OUTPUT_SEPARATOR_LENGTH = 2;
+
+const char OUTPUT_LINE_START[OUTPUT_LINE_START_LENGTH] = {'{'};
+const char OUTPUT_LINE_END[OUTPUT_LINE_END_LENGTH] = {'}'};
+const char OUTPUT_LINE_BREAK[OUTPUT_LINE_BREAK_LENGTH] = {'\n'};
+const char OUTPUT_SEPARATOR[OUTPUT_SEPARATOR_LENGTH] = {',', ' '};
 
 /**
  * Program entry point.
@@ -211,12 +247,11 @@ int main() {
     cur_input++;
   }
 
+  // Compute for the total length of strings
+  uint64_t total_length = 0lu;
   for (int i = 0; i < n; i++) {
-    write(STDOUT_FILENO, in_heads[i], in_lengths[i]);
-    write(STDOUT_FILENO, OUTPUT_LINE_BREAK, 1);
+    total_length += in_lengths[i];
   }
-
-
 
   return 0;
 }
