@@ -88,4 +88,10 @@ modules.xml
 # Sonarlint plugin
 .idea/sonarlint
 
+# doxygen output
+latex
+html
+
+wordenumcanno.c
+
 # End of https://www.gitignore.io/api/clion+all
