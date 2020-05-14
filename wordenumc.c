@@ -98,8 +98,8 @@ static inline uint64_t ncr(const uint64_t n, const uint64_t r) {
   if (n == 1) {
     return 1;
   }
-  const uint64_t prev_count = n * (n - 1) / 2;
-  return *(ncr_table + prev_count + r - 1);
+  const uint64_t prev_count = (n + 1) * n / 2;
+  return *(ncr_table + prev_count + r);
 }
 
 /**
@@ -286,9 +286,9 @@ int main() {
   ++cur_input;
 
   // Compute the Pascal Tree for calculating nCr
-  ncr_table = malloc(sizeof(uint64_t) * (1 + n) * n / 2);
+  ncr_table = malloc(sizeof(uint64_t) * (n + 2) * (n + 1) / 2);
   uint64_t *cur_ncr_table = ncr_table;
-  for (int i = 1; i <= n; ++i) {
+  for (int i = 1; i <= n + 1; ++i) {
     const int prev_count = (i - 1) * (i - 2) / 2;
     for (int j = 1; j <= i; ++j) {
       if (j == 1 || j == i) {
