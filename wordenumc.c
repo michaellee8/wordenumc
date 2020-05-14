@@ -188,6 +188,75 @@ static inline uint64_t compute_output_size(uint64_t total_length, uint64_t n) {
 }
 
 /**
+ * @brief An int stack
+ * A stack data structure for int.
+ */
+struct int_stack {
+  int *arr;
+  int max_size;
+  int size;
+};
+
+/**
+ * @brief Make a new int_stack.
+ * Create and allocate for a new int_stack.
+ * @param max_size Maximum size of the stack.
+ * @return The new stack.
+ */
+static inline struct int_stack *make_int_stack(int max_size) {
+  struct int_stack *s = malloc(sizeof(struct int_stack));
+  s->max_size = max_size;
+  s->size = 0;
+  s->arr = calloc(sizeof(int), max_size);
+  return s;
+}
+
+/**
+ * @brief Top of an int_stack.
+ * Get the current top of an int_stack if the int_stack is not empty.
+ * @param s The int_stack.
+ * @return Top of such int_stack.
+ */
+static inline int top_int_stack(struct int_stack *s) {
+  if (s->size == 0) {
+    panic("Error top stack: stack is empty");
+    return 0;
+  }
+  return s->arr[s->size - 1];
+}
+
+/**
+ * @brief Pop an int_stack.
+ * Pop an int_stack and get the value of the popped element if the int_stack
+ * is not empty.
+ * @param s The int_stack.
+ * @return The popped element of such int_stack.
+ */
+static inline int pop_int_stack(struct int_stack *s) {
+  if (s->size == 0) {
+    panic("Error pop stack: stack is empty");
+    return 0;
+  }
+  s->size--;
+  return s->arr[s->size];
+}
+
+/**
+ * @brief Push an element into int_stack.
+ * Push a new element into int_stack if the int_stack is not full.
+ * @param s The int_stack.
+ * @param num The new element to be pushed into.
+ */
+static inline void push_int_stack(struct int_stack *s, int num) {
+  if (s->size == s->max_size) {
+    panic("Error push stack: stack is full");
+    return;
+  }
+  s->arr[s->size] = num;
+  s->size++;
+}
+
+/**
  * Program entry point.
  * @return 0 if the program succeed, any other integer if program failed.
  */
@@ -315,20 +384,13 @@ int main() {
       cur_output += OUTPUT_LINE_BREAK_LENGTH;
       continue;
     }
-    memset(cur_subset, -1, n);
-    int j = 0;
-    while (true) {
-      while (j < cur_n - 1) {
-        if (cur_subset[j] == n - 1) {
-          if (j == 0) {
-            goto end;
-          }
-          j--;
-        }
-        cur_subset[j]++;
-        j++;
-      }
 
+    // Initialize the first subset of each cur_n
+    for (int i = 0; i < cur_n; i++) {
+      cur_subset[i] = i;
+    }
+
+    while (true) {
       // Let's print according to content of cur_subset
       memcpy(cur_output, OUTPUT_LINE_START, OUTPUT_LINE_START_LENGTH);
       cur_output += OUTPUT_LINE_START_LENGTH;
@@ -337,11 +399,22 @@ int main() {
                *(in_heads + cur_subset[k]),
                *(in_lengths + cur_subset[k]));
         cur_output += *(in_lengths + cur_subset[k]);
+        if (k != cur_n - 1) {
+          memcpy(cur_output, OUTPUT_SEPARATOR, OUTPUT_SEPARATOR_LENGTH);
+          cur_output += OUTPUT_SEPARATOR_LENGTH;
+        }
       }
       memcpy(cur_output, OUTPUT_LINE_END, OUTPUT_LINE_END_LENGTH);
       cur_output += OUTPUT_LINE_END_LENGTH;
       memcpy(cur_output, OUTPUT_LINE_BREAK, OUTPUT_LINE_BREAK_LENGTH);
       cur_output += OUTPUT_LINE_BREAK_LENGTH;
+
+      // Now let's determine the next cur_subset
+
+      while (true) {
+
+      }
+
     }
     end:;
   }
