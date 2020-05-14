@@ -63,6 +63,9 @@
  *   file has an `\n` at the end of it, it's `mmap`ed image in the program must
  *   be ended with an `\n`.
  *
+ * ## References
+ * - https://stackoverflow.com/questions/26259421/use-mmap-in-c-to-write-into-memory
+ *
  */
 
 #include <stdio.h>
@@ -74,6 +77,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <stdnoreturn.h>
+#include <string.h>
 
 /**
  * @brief Precomputed fact(n)
@@ -113,15 +118,15 @@ uint64_t FACT_N[21] =
  * @param n The number to calculate factorial for. Should be n <= 20.
  * @return Factorial of n.
  */
-inline uint64_t fact(const uint64_t n) {
+static inline uint64_t fact(const uint64_t n) {
   if (n < 21lu) {
     return FACT_N[n];
   }
-  if (n == 0lu || n == 1lu) {
-    return 1lu;
-  } else {
-    return n * fact(n - 1lu);
+  uint64_t result = 1;
+  for (int i = 21; i <= n; i++) {
+    result *= i;
   }
+  return result * FACT_N[20];
 }
 
 /**
@@ -132,7 +137,7 @@ inline uint64_t fact(const uint64_t n) {
  * @param r Number of elements per combination.
  * @return Number of combinations.
  */
-inline uint64_t ncr(const uint64_t n, const uint64_t r) {
+static inline uint64_t ncr(const uint64_t n, const uint64_t r) {
   return fact(n) / fact(n - r) / fact(r);
 }
 
@@ -142,10 +147,24 @@ inline uint64_t ncr(const uint64_t n, const uint64_t r) {
  * an error exit value.
  * @param msg Error message to be displayed.
  */
-extern inline void panic(const char *msg) {
+static inline noreturn void panic(const char *msg) {
   perror(msg);
   exit(EXIT_FAILURE);
 }
+
+const char *INPUT_FILENAME = "input.txt";
+const char *OUTPUT_FILENAME = "output.txt";
+const int OUTPUT_FILE_MODE = 0777;
+
+#define OUTPUT_LINE_START_LENGTH 1lu
+#define OUTPUT_LINE_END_LENGTH 1lu
+#define OUTPUT_LINE_BREAK_LENGTH 1lu
+#define OUTPUT_SEPARATOR_LENGTH 2lu
+
+const char OUTPUT_LINE_START[OUTPUT_LINE_START_LENGTH] = {'{'};
+const char OUTPUT_LINE_END[OUTPUT_LINE_END_LENGTH] = {'}'};
+const char OUTPUT_LINE_BREAK[OUTPUT_LINE_BREAK_LENGTH] = {'\n'};
+const char OUTPUT_SEPARATOR[OUTPUT_SEPARATOR_LENGTH] = {',', ' '};
 
 /**
  * @brief Calculate the size of the required output file for this program.
@@ -153,23 +172,20 @@ extern inline void panic(const char *msg) {
  * @param n Number of elements.
  * @return Size of output file (in bytes).
  */
-inline uint64_t compute_output_size(uint64_t total_length, uint64_t n) {
-
+static inline uint64_t compute_output_size(uint64_t total_length, uint64_t n) {
+  uint64_t sum = 0;
+  for (uint64_t i = 0; i <= n; i++) {
+    if (i == 0) {
+      sum += OUTPUT_LINE_START_LENGTH + OUTPUT_LINE_END_LENGTH
+          + OUTPUT_LINE_BREAK_LENGTH;
+      continue;
+    }
+    sum += ncr(n, i) * (OUTPUT_LINE_START_LENGTH + OUTPUT_LINE_END_LENGTH
+        + (i - 1) * OUTPUT_SEPARATOR_LENGTH + OUTPUT_LINE_BREAK_LENGTH);
+    sum += total_length * ncr(n, i) * i / n;
+  }
+  return sum;
 }
-
-const char *INPUT_FILENAME = "input.txt";
-const char *OUTPUT_FILENAME = "output.txt";
-const int FILE_MODE = 0x0777;
-
-const uint64_t OUTPUT_LINE_START_LENGTH = 1;
-const uint64_t OUTPUT_LINE_END_LENGTH = 1;
-const uint64_t OUTPUT_LINE_BREAK_LENGTH = 1;
-const uint64_t OUTPUT_SEPARATOR_LENGTH = 2;
-
-const char OUTPUT_LINE_START[OUTPUT_LINE_START_LENGTH] = {'{'};
-const char OUTPUT_LINE_END[OUTPUT_LINE_END_LENGTH] = {'}'};
-const char OUTPUT_LINE_BREAK[OUTPUT_LINE_BREAK_LENGTH] = {'\n'};
-const char OUTPUT_SEPARATOR[OUTPUT_SEPARATOR_LENGTH] = {',', ' '};
 
 /**
  * Program entry point.
@@ -190,7 +206,7 @@ int main() {
     panic("Error getting size of input file: ");
     return 0;
   }
-  __off_t size_in = stat_in.st_size + 1; // Pad one more byte to add a \n there
+  size_t size_in = stat_in.st_size + 1; // Pad one more byte to add a \n there
 
   // Mmap the input file
   char *input =
@@ -206,7 +222,7 @@ int main() {
   // Use this as a cursor to currently pointed location
   char *cur_input = input;
 
-  // Read the number on the first line into n (wd don't like slow scanf here)
+  // Read the number on the first line into n (I don't like slow scanf here)
   int n = 0;
   while (*cur_input != '\n') {
     n *= 10;
@@ -249,8 +265,103 @@ int main() {
 
   // Compute for the total length of strings
   uint64_t total_length = 0lu;
-  for (int i = 0; i < n; i++) {
-    total_length += in_lengths[i];
+  for (int j = 0; j < n; j++) {
+    total_length += in_lengths[j];
+  }
+
+  // Create (overwrite if exists) output.txt
+  int fd_out =
+      open(OUTPUT_FILENAME, O_RDWR | O_CREAT | O_TRUNC, OUTPUT_FILE_MODE);
+  if (fd_out < 0) {
+    panic("Error opening output file: ");
+  }
+
+  uint64_t size_out = compute_output_size(total_length, n);
+
+  // Extend the output file to the calculated size
+  if (lseek(fd_out, size_out - 1, SEEK_SET) == -1) {
+    panic("Error go to last byte of output file");
+  }
+  if (write(fd_out, "", 1) != 1) {
+    panic("Error appending last byte to output file");
+  }
+
+  // Mmap the output file
+  char *output = mmap(NULL,
+                      size_out,
+                      PROT_WRITE | PROT_READ,
+                      MAP_SHARED,
+                      fd_out,
+                      0);
+
+  // Use this as a cursor to currently pointed location
+  char *cur_output = output;
+
+  // Let's write to output file
+
+  // Initialize the stack we are using to store the current subset
+  // We don't need calloc here since we will manually initialize it
+  int *cur_subset = malloc(n * sizeof(int));
+
+  // Loop from empty set (cur_n=0) to full set (cur_n=n)
+  for (int cur_n = 0; cur_n <= n; cur_n++) {
+    if (cur_n == 0) {
+      // Handle empty set case
+      memcpy(cur_output, OUTPUT_LINE_START, OUTPUT_LINE_START_LENGTH);
+      cur_output += OUTPUT_LINE_START_LENGTH;
+      memcpy(cur_output, OUTPUT_LINE_END, OUTPUT_LINE_END_LENGTH);
+      cur_output += OUTPUT_LINE_END_LENGTH;
+      memcpy(cur_output, OUTPUT_LINE_BREAK, OUTPUT_LINE_BREAK_LENGTH);
+      cur_output += OUTPUT_LINE_BREAK_LENGTH;
+      continue;
+    }
+    memset(cur_subset, -1, n);
+    int j = 0;
+    while (true) {
+      while (j < cur_n - 1) {
+        if (cur_subset[j] == n - 1) {
+          if (j == 0) {
+            goto end;
+          }
+          j--;
+        }
+        cur_subset[j]++;
+        j++;
+      }
+
+      // Let's print according to content of cur_subset
+      memcpy(cur_output, OUTPUT_LINE_START, OUTPUT_LINE_START_LENGTH);
+      cur_output += OUTPUT_LINE_START_LENGTH;
+      for (int k = 0; k < cur_n; k++) {
+        memcpy(cur_output,
+               *(in_heads + cur_subset[k]),
+               *(in_lengths + cur_subset[k]));
+        cur_output += *(in_lengths + cur_subset[k]);
+      }
+      memcpy(cur_output, OUTPUT_LINE_END, OUTPUT_LINE_END_LENGTH);
+      cur_output += OUTPUT_LINE_END_LENGTH;
+      memcpy(cur_output, OUTPUT_LINE_BREAK, OUTPUT_LINE_BREAK_LENGTH);
+      cur_output += OUTPUT_LINE_BREAK_LENGTH;
+    }
+    end:;
+  }
+
+  // Clean up files
+  if (munmap(input, size_in + 1) < 0) {
+    panic("Error unmapping input file: ");
+    return 0;
+  }
+  if (munmap(output, size_out) < 0) {
+    panic("Error unmapping output file: ");
+    return 0;
+  }
+  if (close(fd_in) < 0) {
+    panic("Error closing input file: ");
+    return 0;
+  }
+  if (close(fd_out) < 0) {
+    panic("Error closing output file: ");
+    return 0;
   }
 
   return 0;
