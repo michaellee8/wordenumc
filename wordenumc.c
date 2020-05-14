@@ -48,9 +48,6 @@
  * - Example:
  * `{}\n{foo}\n{boo}\n{bar}\n{foo, boo}\n{foo, bar}\n{boo, bar}\n{foo, boo, bar}\n`
  *
- * ## Limitations
- * - It is assumed that `n <= 20`, such that `fact(n) <= UINT64_MAX`
- *
  * ## License
  * MIT License
  *
@@ -62,6 +59,9 @@
  *   file and then put an `\n` to that last byte, hence ensuring whatever the
  *   file has an `\n` at the end of it, it's `mmap`ed image in the program must
  *   be ended with an `\n`.
+ * - This program is so fast that for an example test case of n = 25, which
+ *   generates a 1.6 GB output.txt, it only took less than 6 seconds in average
+ *   on my 8-th gen i7 laptop.
  *
  * ## References
  * - https://stackoverflow.com/questions/26259421/use-mmap-in-c-to-write-into-memory
