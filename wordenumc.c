@@ -79,6 +79,7 @@
 #include <unistd.h>
 #include <stdnoreturn.h>
 #include <string.h>
+#include <assert.h>
 
 /**
  * @brief Precomputed fact(n)
@@ -218,11 +219,29 @@ static inline struct int_stack *make_int_stack(int max_size) {
  * @return Top of such int_stack.
  */
 static inline int top_int_stack(struct int_stack *s) {
-  if (s->size == 0) {
-    panic("Error top stack: stack is empty");
-    return 0;
-  }
+  assert (s->size != 0);
   return s->arr[s->size - 1];
+}
+
+/**
+ * @brief Change the value of the top of an int_stack.
+ * Modify the top value of the int_stack. Does not require a pop/push.
+ * @param s The int_stack.
+ * @param nv Such new value.
+ */
+static inline void change_top_int_stack(struct int_stack *s, int nv) {
+  assert (s->size != 0);
+  s->arr[s->size - 1] = nv;
+}
+
+/**
+ * @brief Increase the top of an int_stack by 1.
+ * Increase the top of an int_stack by 1. Does not involve a top/push.
+ * @param s The int_stack.
+ */
+static inline void inc_top_int_stack(struct int_stack *s) {
+  assert (s->size != 0);
+  s->arr[s->size - 1]++;
 }
 
 /**
@@ -233,10 +252,7 @@ static inline int top_int_stack(struct int_stack *s) {
  * @return The popped element of such int_stack.
  */
 static inline int pop_int_stack(struct int_stack *s) {
-  if (s->size == 0) {
-    panic("Error pop stack: stack is empty");
-    return 0;
-  }
+  assert(s->size != 0);
   s->size--;
   return s->arr[s->size];
 }
@@ -248,12 +264,19 @@ static inline int pop_int_stack(struct int_stack *s) {
  * @param num The new element to be pushed into.
  */
 static inline void push_int_stack(struct int_stack *s, int num) {
-  if (s->size == s->max_size) {
-    panic("Error push stack: stack is full");
-    return;
-  }
+  assert(s->size != s->max_size);
   s->arr[s->size] = num;
   s->size++;
+}
+
+/**
+ * @brief Test if an int_stack is empty.
+ * Determine whether an int_stack is empty by its size.
+ * @param s The int_stack.
+ * @return Whether such int_stack is empty.
+ */
+static inline bool is_empty_int_stack(struct int_stack *s) {
+  return s->size == 0;
 }
 
 /**
@@ -369,8 +392,7 @@ int main() {
   // Let's write to output file
 
   // Initialize the stack we are using to store the current subset
-  // We don't need calloc here since we will manually initialize it
-  int *cur_subset = malloc(n * sizeof(int));
+  struct int_stack *cur_subset = make_int_stack(n);
 
   // Loop from empty set (cur_n=0) to full set (cur_n=n)
   for (int cur_n = 0; cur_n <= n; cur_n++) {
@@ -387,19 +409,20 @@ int main() {
 
     // Initialize the first subset of each cur_n
     for (int i = 0; i < cur_n; i++) {
-      cur_subset[i] = i;
+      cur_subset->arr[i] = i;
     }
+    cur_subset->size = cur_n;
 
     while (true) {
       // Let's print according to content of cur_subset
       memcpy(cur_output, OUTPUT_LINE_START, OUTPUT_LINE_START_LENGTH);
       cur_output += OUTPUT_LINE_START_LENGTH;
-      for (int k = 0; k < cur_n; k++) {
+      for (int k = 0; k < cur_subset->size; k++) {
         memcpy(cur_output,
-               *(in_heads + cur_subset[k]),
-               *(in_lengths + cur_subset[k]));
-        cur_output += *(in_lengths + cur_subset[k]);
-        if (k != cur_n - 1) {
+               *(in_heads + cur_subset->arr[k]),
+               *(in_lengths + cur_subset->arr[k]));
+        cur_output += *(in_lengths + cur_subset->arr[k]);
+        if (k != cur_subset->size - 1) {
           memcpy(cur_output, OUTPUT_SEPARATOR, OUTPUT_SEPARATOR_LENGTH);
           cur_output += OUTPUT_SEPARATOR_LENGTH;
         }
@@ -410,10 +433,19 @@ int main() {
       cur_output += OUTPUT_LINE_BREAK_LENGTH;
 
       // Now let's determine the next cur_subset
-
-      while (true) {
-
-      }
+      do {
+        if (top_int_stack(cur_subset) == n - 1) {
+          pop_int_stack(cur_subset);
+          if (is_empty_int_stack(cur_subset)) {
+            goto end;
+          }
+          change_top_int_stack(cur_subset, top_int_stack(cur_subset) + 1);
+        } else if (cur_subset->size < cur_n) {
+          push_int_stack(cur_subset, top_int_stack(cur_subset) + 1);
+        } else {
+          change_top_int_stack(cur_subset, top_int_stack(cur_subset) + 1);
+        }
+      } while (cur_subset->size < cur_n);
 
     }
     end:;
