@@ -136,7 +136,6 @@ const char OUTPUT_SEPARATOR[OUTPUT_SEPARATOR_LENGTH] = {',', ' '};
 static inline uint64_t compute_output_size(uint64_t total_length, uint64_t n) {
   uint64_t sum = 0;
   for (uint64_t i = 0; i <= n; ++i) {
-
     if (i == 0) {
       sum += OUTPUT_LINE_START_LENGTH + OUTPUT_LINE_END_LENGTH
           + OUTPUT_LINE_BREAK_LENGTH;
