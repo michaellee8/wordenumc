@@ -81,54 +81,7 @@
 #include <string.h>
 #include <assert.h>
 
-/**
- * @brief Precomputed fact(n)
- *
- * Precomputed value of fact(n) for 0 <= n <= 20, which is the range of n
- * acceptable in this program.
- */
-uint64_t FACT_N[21] =
-    {
-        1,
-        1,
-        2,
-        6,
-        24,
-        120,
-        720,
-        5040,
-        40320,
-        362880,
-        3628800,
-        39916800,
-        479001600,
-        6227020800,
-        87178291200,
-        1307674368000,
-        20922789888000,
-        355687428096000,
-        6402373705728000,
-        121645100408832000,
-        2432902008176640000,
-    };
-
-/**
- * @brief Calculate factorial of n.
- * Calculate factorial of n. If n <= 20 then use the lookup table, otherwise
- * calculate it using recursion.
- * @param n The number to calculate factorial for. Should be n <= 20.
- * @return Factorial of n.
- */
-static inline uint64_t fact(const uint64_t n) {
-  if (n < 21lu) {
-    return FACT_N[n];
-  }
-  uint64_t result = 1;
-  for (int i = 21; i <= n; i++) {
-    result *= i;
-  }
-  return result * FACT_N[20];
-}
+static uint64_t *ncr_table;
 
 /**
  * @brief Calculate nCr.
@@ -139,7 +92,14 @@ static inline uint64_t fact(const uint64_t n) {
  * @return Number of combinations.
  */
 static inline uint64_t ncr(const uint64_t n, const uint64_t r) {
-  return fact(n) / fact(n - r) / fact(r);
+  if (n == 0) {
+    return 1;
+  }
+  if (n == 1) {
+    return 1;
+  }
+  const uint64_t prev_count = n * (n - 1) / 2;
+  return *(ncr_table + prev_count + r - 1);
 }
 
 /**
@@ -175,15 +135,16 @@ const char OUTPUT_SEPARATOR[OUTPUT_SEPARATOR_LENGTH] = {',', ' '};
  */
 static inline uint64_t compute_output_size(uint64_t total_length, uint64_t n) {
   uint64_t sum = 0;
-  for (uint64_t i = 0; i <= n; i++) {
+  for (uint64_t i = 0; i <= n; ++i) {
+    uint64_t comb = ncr(n, i);
     if (i == 0) {
       sum += OUTPUT_LINE_START_LENGTH + OUTPUT_LINE_END_LENGTH
           + OUTPUT_LINE_BREAK_LENGTH;
       continue;
     }
-    sum += ncr(n, i) * (OUTPUT_LINE_START_LENGTH + OUTPUT_LINE_END_LENGTH
+    sum += comb * (OUTPUT_LINE_START_LENGTH + OUTPUT_LINE_END_LENGTH
         + (i - 1) * OUTPUT_SEPARATOR_LENGTH + OUTPUT_LINE_BREAK_LENGTH);
-    sum += total_length * ncr(n, i) * i / n;
+    sum += total_length * comb * i / n;
   }
   return sum;
 }
@@ -266,7 +227,7 @@ static inline int pop_int_stack(struct int_stack *s) {
 static inline void push_int_stack(struct int_stack *s, int num) {
   assert(s->size != s->max_size);
   s->arr[s->size] = num;
-  s->size++;
+  ++(s->size);
 }
 
 /**
@@ -319,11 +280,26 @@ int main() {
   while (*cur_input != '\n') {
     n *= 10;
     n += (*cur_input) - '0';
-    cur_input++;
+    ++cur_input;
   }
 
   // Move cursor forward by 1 so that now we have address to head of first element
-  cur_input++;
+  ++cur_input;
+
+  // Compute the Pascal Tree for calculating nCr
+  ncr_table = malloc(sizeof(uint64_t) * (1 + n) * n / 2);
+  uint64_t *cur_ncr_table = ncr_table;
+  for (int i = 1; i <= n; ++i) {
+    const int prev_count = (i - 1) * (i - 2) / 2;
+    for (int j = 1; j <= i; ++j) {
+      if (j == 1 || j == i) {
+        *(cur_ncr_table++) = 1;
+        continue;
+      }
+      *(cur_ncr_table++) =
+          *(ncr_table + prev_count + j - 2) + *(ncr_table + prev_count + j - 1);
+    }
+  }
 
   // Allocate for an array storing cursor to head of each element
   char **in_heads = calloc(sizeof(char *), n);
@@ -350,14 +326,14 @@ int main() {
     if ((*cur_input) == '\n') {
       in_lengths[i] = cur_input - in_heads[i];
       next_is_head = true;
-      i++;
+      ++i;
     }
-    cur_input++;
+    ++cur_input;
   }
 
   // Compute for the total length of strings
   uint64_t total_length = 0lu;
-  for (int j = 0; j < n; j++) {
+  for (int j = 0; j < n; ++j) {
     total_length += in_lengths[j];
   }
 
@@ -395,7 +371,7 @@ int main() {
   struct int_stack *cur_subset = make_int_stack(n);
 
   // Loop from empty set (cur_n=0) to full set (cur_n=n)
-  for (int cur_n = 0; cur_n <= n; cur_n++) {
+  for (int cur_n = 0; cur_n <= n; ++cur_n) {
     if (cur_n == 0) {
       // Handle empty set case
       memcpy(cur_output, OUTPUT_LINE_START, OUTPUT_LINE_START_LENGTH);
@@ -408,7 +384,7 @@ int main() {
     }
 
     // Initialize the first subset of each cur_n
-    for (int i = 0; i < cur_n; i++) {
+    for (int i = 0; i < cur_n; ++i) {
       cur_subset->arr[i] = i;
     }
     cur_subset->size = cur_n;
@@ -417,7 +393,7 @@ int main() {
       // Let's print according to content of cur_subset
       memcpy(cur_output, OUTPUT_LINE_START, OUTPUT_LINE_START_LENGTH);
       cur_output += OUTPUT_LINE_START_LENGTH;
-      for (int k = 0; k < cur_subset->size; k++) {
+      for (int k = 0; k < cur_subset->size; ++k) {
         memcpy(cur_output,
                *(in_heads + cur_subset->arr[k]),
                *(in_lengths + cur_subset->arr[k]));
