@@ -417,11 +417,11 @@ int main() {
           if (is_empty_int_stack(cur_subset)) {
             goto end;
           }
-          change_top_int_stack(cur_subset, top_int_stack(cur_subset) + 1);
+          inc_top_int_stack(cur_subset);
         } else if (cur_subset->size < cur_n) {
           push_int_stack(cur_subset, top_int_stack(cur_subset) + 1);
         } else {
-          change_top_int_stack(cur_subset, top_int_stack(cur_subset) + 1);
+          inc_top_int_stack(cur_subset);
         }
       } while (cur_subset->size < cur_n);
 
