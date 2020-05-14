@@ -136,15 +136,15 @@ const char OUTPUT_SEPARATOR[OUTPUT_SEPARATOR_LENGTH] = {',', ' '};
 static inline uint64_t compute_output_size(uint64_t total_length, uint64_t n) {
   uint64_t sum = 0;
   for (uint64_t i = 0; i <= n; ++i) {
-    uint64_t comb = ncr(n, i);
+
     if (i == 0) {
       sum += OUTPUT_LINE_START_LENGTH + OUTPUT_LINE_END_LENGTH
           + OUTPUT_LINE_BREAK_LENGTH;
       continue;
     }
-    sum += comb * (OUTPUT_LINE_START_LENGTH + OUTPUT_LINE_END_LENGTH
+    sum += ncr(n, i) * (OUTPUT_LINE_START_LENGTH + OUTPUT_LINE_END_LENGTH
         + (i - 1) * OUTPUT_SEPARATOR_LENGTH + OUTPUT_LINE_BREAK_LENGTH);
-    sum += total_length * comb * i / n;
+    sum += total_length * ncr(n, i) * i / n;
   }
   return sum;
 }
@@ -293,11 +293,13 @@ int main() {
     const int prev_count = (i - 1) * (i - 2) / 2;
     for (int j = 1; j <= i; ++j) {
       if (j == 1 || j == i) {
-        *(cur_ncr_table++) = 1;
+        *cur_ncr_table = 1;
+        ++cur_ncr_table;
         continue;
       }
-      *(cur_ncr_table++) =
+      *cur_ncr_table =
           *(ncr_table + prev_count + j - 2) + *(ncr_table + prev_count + j - 1);
+      ++cur_ncr_table;
     }
   }
 
